@@ -1,0 +1,33 @@
+[project]
+name = "social-recv"
+authors = []
+description = ""
+telemetry = false
+requirements = []
+
+[contracts.sip-010-trait-ft-standard]
+path = "contracts/sip-010-trait-ft-standard.clar"
+depends_on = []
+
+
+[contracts.wstx]
+path = "contracts/wstx.clar"
+depends_on = ["sip-010-trait-ft-standard"]
+
+
+[contracts.social-recovery]
+path = "contracts/social-recovery.clar"
+depends_on = []
+
+[repl]
+costs_version = 2
+parser_version = 2
+
+[repl.analysis]
+passes = ["check_checker"]
+
+[repl.analysis.check_checker]
+strict = false
+trusted_sender = false
+trusted_caller = false
+callee_filter = false
