@@ -31,7 +31,7 @@ const depositTx = (contractName: string, amount: number, sender: string) => {
   );
 };
 
-const transferTx = (
+const externalTransferTx = (
   contractName: string,
   amount: number,
   sender: string,
@@ -41,6 +41,26 @@ const transferTx = (
   return Tx.contractCall(
     contractName,
     "external-transfer",
+    [
+      types.uint(amount),
+      types.principal(sender),
+      types.principal(recipient),
+      memo ? types.some(types.buff(stringToBuffer(memo))) : types.none(),
+    ],
+    sender
+  );
+};
+
+const internalTransferTx = (
+  contractName: string,
+  amount: number,
+  sender: string,
+  recipient: string,
+  memo?: string
+) => {
+  return Tx.contractCall(
+    contractName,
+    "internal-transfer",
     [
       types.uint(amount),
       types.principal(sender),
@@ -144,47 +164,48 @@ Clarinet.test({
 });
 
 Clarinet.test({
-  name: "Ensure that it can store and keep track of people's stx balances",
+  name: "as a member i should be able to make an internal transfer to other members",
   async fn(chain: Chain, accounts: Map<string, Account>) {
     const deployer = accounts.get("deployer")!;
     const wallet_1 = accounts.get("wallet_1")!;
     const wallet_2 = accounts.get("wallet_2")!;
-    const wallet_3 = accounts.get("wallet_3")!;
-    const wallet_4 = accounts.get("wallet_4")!;
-    const wallet_5 = accounts.get("wallet_5")!;
+
     const contractName = deployer.address + ".social-recovery";
-    let block = chain.mineBlock([
-      depositTx(contractName, 1000, wallet_1.address),
-    ]);
-    assertEquals(block.receipts.length, 1);
-    assertEquals(block.height, 2);
 
-    const result = block.receipts[0].result;
-
-    assertEquals(result, types.ok(types.bool(true)));
-
-    const balance = getMemberBalance(chain, contractName, wallet_1.address);
-
-    assertEquals(balance, types.uint(1000));
-    const wallet2InitialBalance = getSTXBalance(
+    const wallet2InitialSTXBalance = getSTXBalance(
       chain,
       accounts,
       wallet_2.address
     );
 
-    block = chain.mineBlock([
-      transferTx(contractName, 100, wallet_1.address, wallet_2.address),
+    chain.mineBlock([
+      depositTx(contractName, 1000, wallet_1.address),
+      internalTransferTx(contractName, 500, wallet_1.address, wallet_2.address),
     ]);
-    const remainingBalance = getMemberBalance(
+
+    const wallet1InternalBalance = getMemberBalance(
       chain,
       contractName,
       wallet_1.address
     );
-    assertEquals(remainingBalance, types.uint(900));
-    const wallet2NewBalance = getSTXBalance(chain, accounts, wallet_2.address);
-    assertEquals(wallet2NewBalance, wallet2InitialBalance + 100);
 
-    assertEquals(block.receipts.length, 1);
-    assertEquals(block.height, 3);
+    assertEquals(wallet1InternalBalance, types.uint(500));
+
+    const wallet2InternalBalance = getMemberBalance(
+      chain,
+      contractName,
+      wallet_2.address
+    );
+
+    const wallet2FinalSTXBalance = getSTXBalance(
+      chain,
+      accounts,
+      wallet_2.address
+    );
+
+    // STX balance should be unchanged
+    assertEquals(wallet2FinalSTXBalance, wallet2InitialSTXBalance);
+
+    assertEquals(wallet2InternalBalance, types.uint(500));
   },
 });

@@ -86,6 +86,29 @@
     (external-transfer amount member member none)
 )
 
+(define-public (internal-transfer (amount uint) (from principal) (to principal) (memo (optional (buff 34))))
+    (begin 
+        (asserts! (is-eq tx-sender from contract-caller) (err NOT-AUTHORIZED))
+        (asserts! (is-member from) (err NOT-MEMBER))
+        (asserts! (is-member to) (err NOT-MEMBER))
+        (let (
+            (from-balance (get-balance from))
+            (from-new-balance 
+                (- from-balance amount))
+
+            (to-balance (get-balance to))
+            (to-new-balance 
+                (+ to-balance amount))
+        )
+            (asserts! (>= from-balance amount) (err INSUFFICIENT-FUNDS))
+            (map-set member-balances from from-new-balance)
+            (map-set member-balances to to-new-balance)
+            (match memo to-print (print to-print) 0x)
+            (ok true)
+        )
+    )
+)
+
 
 (define-read-only (get-balance (member principal)) 
     (default-to u0 (map-get? member-balances member)))
