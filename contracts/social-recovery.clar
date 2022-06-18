@@ -2,6 +2,10 @@
 ;; social-recovery
 ;; v1 
 ;; - store and keep track of people's stx balances
+;;   . as a member i should be able to make a deposit to my own account
+;;   . as a member i should be able to make a withdrawal from my own account
+;;   . as a member i should be able to make an internal transfer to other members
+;;   . as a member i should be able to make an external transfer to someone else
 ;; - enable people to control their stx via contract
 ;; - enable them to recover each other's balances if they lose their keys
 
@@ -60,26 +64,34 @@
     )
 )
 
-(define-public (transfer (amount uint) (from principal) (to principal) (memo (optional (buff 34))))
-    (let (
-
-        (balance (unwrap! (map-get? member-balances from) (err NOT-MEMBER)))
-        (new-balance 
-            (begin 
-                (asserts! (>= balance amount) (err INSUFFICIENT-FUNDS))
-                (- balance amount)))
-    )
+(define-public (external-transfer (amount uint) (from principal) (to principal) (memo (optional (buff 34))))
+    (begin 
+        (asserts! (is-member tx-sender) (err NOT-MEMBER))
         (asserts! (is-eq tx-sender from contract-caller) (err NOT-AUTHORIZED))
-        (map-set member-balances from new-balance)
-        (match memo to-print (print to-print) 0x)
-        ;; it's up da fucking user to check the receiver idgaf
-        ;; #[filter(to)] 
-        (as-contract (stx-transfer? amount CONTRACT to))
-    ))
+        (let (
+            (balance (get-balance from))
+            (new-balance 
+                (- balance amount))
+        )
+            (asserts! (>= balance amount) (err INSUFFICIENT-FUNDS))
+            (map-set member-balances from new-balance)
+            (match memo to-print (print to-print) 0x)
+            (as-contract (stx-transfer? amount tx-sender to))
+        )
+    )
+)
+
+
+(define-public (withdraw (amount uint) (member principal)) 
+    (external-transfer amount member member none)
+)
 
 
 (define-read-only (get-balance (member principal)) 
     (default-to u0 (map-get? member-balances member)))
+
+(define-read-only (is-member (account principal)) 
+    (is-some (map-get? member-balances account)))
 
 ;; init
 
