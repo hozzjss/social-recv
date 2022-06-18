@@ -6,7 +6,13 @@ import {
   types,
 } from "https://deno.land/x/clarinet@v0.14.0/index.ts";
 import { assertEquals } from "https://deno.land/std@0.90.0/testing/asserts.ts";
-import * as mod from "https://deno.land/std@0.76.0/node/buffer.ts";
+// import * as mod from "https://deno.land/std@0.76.0/node/buffer.ts";
+
+const ErrorCodes = {
+  NOT_MEMBER: 1001,
+  NOT_AUTHORIZED: 1002,
+  INSUFFICIENT_FUNDS: 2001,
+};
 
 const getMemberBalance = (
   chain: Chain,
@@ -22,11 +28,16 @@ const getMemberBalance = (
   return result.result;
 };
 
-const depositTx = (contractName: string, amount: number, sender: string) => {
+const depositTx = (
+  contractName: string,
+  amount: number,
+  sender: string,
+  recipient: string
+) => {
   return Tx.contractCall(
     contractName,
     "deposit",
-    [types.uint(amount), types.principal(sender)],
+    [types.uint(amount), types.principal(recipient)],
     sender
   );
 };
@@ -102,13 +113,14 @@ const stringToBuffer = (str: string) => {
   return enc.encode(str);
 };
 Clarinet.test({
-  name: "as a member i should be able to make a deposit to my own account",
+  name: "as any user i should be able to make a deposit to a member account",
   async fn(chain: Chain, accounts: Map<string, Account>) {
     const deployer = accounts.get("deployer")!;
     const wallet_1 = accounts.get("wallet_1")!;
+    const nonMemberWallet = accounts.get("wallet_6")!;
     const contractName = deployer.address + ".social-recovery";
     let block = chain.mineBlock([
-      depositTx(contractName, 1000, wallet_1.address),
+      depositTx(contractName, 1000, wallet_1.address, wallet_1.address),
     ]);
     assertEquals(block.receipts.length, 1);
     assertEquals(block.height, 2);
@@ -116,6 +128,17 @@ Clarinet.test({
     const balance = getMemberBalance(chain, contractName, wallet_1.address);
 
     assertEquals(balance, types.uint(1000));
+
+    block = chain.mineBlock([
+      depositTx(contractName, 1000, wallet_1.address, nonMemberWallet.address),
+    ]);
+
+    assertEquals(block.receipts.length, 1);
+    assertEquals(block.height, 3);
+
+    const result = block.receipts[0].result;
+
+    assertEquals(result, types.err(types.uint(ErrorCodes.NOT_MEMBER)));
   },
 });
 
@@ -134,7 +157,7 @@ Clarinet.test({
     );
 
     let block = chain.mineBlock([
-      depositTx(contractName, 1000, wallet_1.address),
+      depositTx(contractName, 1000, wallet_1.address, wallet_1.address),
     ]);
 
     assertEquals(block.receipts.length, 1);
@@ -179,7 +202,7 @@ Clarinet.test({
     );
 
     chain.mineBlock([
-      depositTx(contractName, 1000, wallet_1.address),
+      depositTx(contractName, 1000, wallet_1.address, wallet_1.address),
       internalTransferTx(contractName, 500, wallet_1.address, wallet_2.address),
     ]);
 
@@ -226,7 +249,7 @@ Clarinet.test({
     );
 
     chain.mineBlock([
-      depositTx(contractName, 1000, wallet_1.address),
+      depositTx(contractName, 1000, wallet_1.address, wallet_1.address),
       externalTransferTx(contractName, 500, wallet_1.address, wallet_2.address),
     ]);
 

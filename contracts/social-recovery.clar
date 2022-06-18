@@ -6,8 +6,13 @@
 ;;   . as a member i should be able to make a withdrawal from my own account
 ;;   . as a member i should be able to make an internal transfer to other members
 ;;   . as a member i should be able to make an external transfer to someone else
-;; - enable people to control their stx via contract
 ;; - enable them to recover each other's balances if they lose their keys
+;;   **** CONSENSUS FLOW STYLE ****
+;;   . as a member i should be able to mark an account as lost and provide a new owner principal
+;;       - this would mark the account as inaccessible until the recovery request is fulfilled or rejected
+;;   . as a member I should be able to dissent to recovery request so that the request is cancelled
+;;   . as a member I should be able to execute the recovery request after a dissent period passes
+
 
 ;; constants
 ;;
@@ -53,8 +58,10 @@
 (define-public (deposit (amount uint) (to principal))
     (let 
         (
-            ;; #[filter(to)]
-            (balance (unwrap! (map-get? member-balances to) (err NOT-MEMBER)))
+            (balance 
+                (begin
+                    (asserts! (is-member to) (err NOT-MEMBER))
+                    (get-balance to)))
             (new-balance (begin 
                 (asserts! (> (stx-get-balance tx-sender) amount) (err INSUFFICIENT-FUNDS))
                 (+ balance amount)))
