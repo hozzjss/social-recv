@@ -64,8 +64,15 @@ Clarinet.test({
     assertEquals(wallet2FinalSTXBalance, wallet2InitialSTXBalance);
 
     assertEquals(wallet2InternalBalance, types.uint(500));
+  },
+});
 
-    block = chain.mineBlock([
+Clarinet.test({
+  name: "Ensure that a member can only transfer if they have sufficient funds",
+  async fn(chain: Chain, accounts: Map<string, Account>) {
+    const { wallet_1, wallet_2, nonMemberWallet, contractName } =
+      getTestMeta(accounts);
+    let block = chain.mineBlock([
       internalTransferTx(
         contractName,
         1000,
@@ -74,28 +81,47 @@ Clarinet.test({
       ),
     ]);
 
-    result = block.receipts[0].result;
+    assertEquals(block.receipts.length, 1);
+
+    let result = block.receipts[0].result;
 
     assertEquals(result, types.err(types.uint(ErrorCodes.INSUFFICIENT_FUNDS)));
+  },
+});
 
-    block = chain.mineBlock([
+Clarinet.test({
+  name: "Ensure that only members can transfer",
+  async fn(chain: Chain, accounts: Map<string, Account>) {
+    const { wallet_1, wallet_2, nonMemberWallet, contractName } =
+      getTestMeta(accounts);
+    let block = chain.mineBlock([
       internalTransferTx(
         contractName,
-        500,
+        1000,
         nonMemberWallet.address,
-        wallet_1.address
+        wallet_2.address
       ),
     ]);
 
-    result = block.receipts[0].result;
+    assertEquals(block.receipts.length, 1);
+
+    let result = block.receipts[0].result;
 
     assertEquals(result, types.err(types.uint(ErrorCodes.NOT_MEMBER)));
+  },
+});
 
-    block = chain.mineBlock([
-      internalTransferTx(contractName, 0, wallet_1.address, wallet_1.address),
+Clarinet.test({
+  name: "Ensure that only a positive non-zero amount can be transferred",
+  async fn(chain: Chain, accounts: Map<string, Account>) {
+    const { wallet_1, wallet_2, contractName } = getTestMeta(accounts);
+    let block = chain.mineBlock([
+      internalTransferTx(contractName, 0, wallet_1.address, wallet_2.address),
     ]);
 
-    result = block.receipts[0].result;
+    assertEquals(block.receipts.length, 1);
+
+    let result = block.receipts[0].result;
 
     assertEquals(result, types.err(types.uint(ErrorCodes.INVALID_AMOUNT)));
   },

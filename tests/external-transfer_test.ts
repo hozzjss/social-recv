@@ -104,7 +104,7 @@ Clarinet.test({
 });
 
 Clarinet.test({
-  name: "Ensure that a positive non-zero amount can be transferred",
+  name: "Ensure that only a positive non-zero amount can be transferred",
   async fn(chain: Chain, accounts: Map<string, Account>) {
     const { contractName, wallet_1, wallet_2 } = getTestMeta(accounts);
     let block = chain.mineBlock([
