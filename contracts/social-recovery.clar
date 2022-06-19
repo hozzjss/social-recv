@@ -9,7 +9,13 @@
 ;; - enable them to recover each other's balances if they lose their keys
 ;;   **** CONSENSUS FLOW STYLE ****
 ;;   . as a member i should be able to mark an account as lost and provide a new owner principal
-;;       - this would mark the account as inaccessible until the recovery request is fulfilled or rejected
+;;       - this would mark the account as inaccessible for 200 blocks until the recovery request is fulfilled or rejected
+;;       - this would also restrict the member who marked the account 
+;;         as lost from marking any other account as lost for 2000 blocks
+;;       - 200 blocks so that if the account was stolen the thief wouldn't be able to access it
+;;       - 2000 blocks so that if a member was acting maliciously 
+;;         and wanted to lock everyone out of their account, they wouldn't be able to do so for 2000 blocks
+;;         these numbers are open to change
 ;;   . as a member I should be able to dissent to recovery request so that the request is cancelled
 ;;   . as a member I should be able to execute the recovery request after a dissent period passes
 
