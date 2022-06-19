@@ -13,6 +13,7 @@ import {
   getSTXBalance,
   internalTransferTx,
   withdrawTx,
+  getTestMeta,
 } from "./util.ts";
 // import * as mod from "https://deno.land/std@0.76.0/node/buffer.ts";
 
@@ -27,10 +28,7 @@ Clarinet.test({
       and wanted to lock everyone out of their account, they wouldn't be able to do so for 2000 blocks
       these numbers are open to change`,
   async fn(chain: Chain, accounts: Map<string, Account>) {
-    const deployer = accounts.get("deployer")!;
-    const wallet_1 = accounts.get("wallet_1")!;
-    const wallet_2 = accounts.get("wallet_2")!;
-
-    const contractName = deployer.address + ".social-recovery";
+    const { wallet_1, wallet_2, nonMemberWallet, contractName } =
+      getTestMeta(accounts);
   },
 });

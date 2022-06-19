@@ -114,3 +114,25 @@ export const stringToBuffer = (str: string) => {
   const enc = new TextEncoder();
   return enc.encode(str);
 };
+
+export const getTestMeta = (accounts: Map<string, Account>) => {
+  const deployer = accounts.get("deployer")!;
+  const wallet_1 = accounts.get("wallet_1")!;
+  const wallet_2 = accounts.get("wallet_2")!;
+  const wallet_3 = accounts.get("wallet_3")!;
+  const wallet_4 = accounts.get("wallet_4")!;
+  const wallet_5 = accounts.get("wallet_5")!;
+  const nonMemberWallet = accounts.get("wallet_6")!;
+  const contractName = deployer.address + ".social-recovery";
+
+  return {
+    deployer,
+    wallet_1,
+    wallet_2,
+    wallet_3,
+    wallet_4,
+    wallet_5,
+    nonMemberWallet,
+    contractName,
+  };
+};

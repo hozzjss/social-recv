@@ -5,44 +5,58 @@ import {
   types,
 } from "https://deno.land/x/clarinet@v0.14.0/index.ts";
 import { assertEquals } from "https://deno.land/std@0.90.0/testing/asserts.ts";
-import { getMemberBalance, depositTx, ErrorCodes } from "./util.ts";
+import {
+  getMemberBalance,
+  depositTx,
+  ErrorCodes,
+  getTestMeta,
+} from "./util.ts";
 
 Clarinet.test({
   name: "as any user i should be able to make a deposit to a member account",
   async fn(chain: Chain, accounts: Map<string, Account>) {
-    const deployer = accounts.get("deployer")!;
-    const wallet_1 = accounts.get("wallet_1")!;
-    const nonMemberWallet = accounts.get("wallet_6")!;
-    const contractName = deployer.address + ".social-recovery";
+    const { wallet_1, nonMemberWallet, contractName } = getTestMeta(accounts);
     let block = chain.mineBlock([
       depositTx(contractName, 1000, wallet_1.address, wallet_1.address),
     ]);
-    assertEquals(block.receipts.length, 1);
-    assertEquals(block.height, 2);
 
+    let result = block.receipts[0].result;
+
+    assertEquals(result, types.ok(types.bool(true)));
+    assertEquals(block.receipts.length, 1);
     const balance = getMemberBalance(chain, contractName, wallet_1.address);
 
     assertEquals(balance, types.uint(1000));
+  },
+});
 
-    block = chain.mineBlock([
+Clarinet.test({
+  name: "Ensure that a member can't make a deposit to a non-member account",
+  fn(chain: Chain, accounts: Map<string, Account>) {
+    const { wallet_1, nonMemberWallet, contractName } = getTestMeta(accounts);
+
+    let block = chain.mineBlock([
       depositTx(contractName, 1000, wallet_1.address, nonMemberWallet.address),
     ]);
-
     assertEquals(block.receipts.length, 1);
-    assertEquals(block.height, 3);
 
     let result = block.receipts[0].result;
 
     assertEquals(result, types.err(types.uint(ErrorCodes.NOT_MEMBER)));
+  },
+});
 
-    block = chain.mineBlock([
+Clarinet.test({
+  name: "Ensure that a member can't make an invalid amount  deposit",
+  fn(chain: Chain, accounts: Map<string, Account>) {
+    const { wallet_1, nonMemberWallet, contractName } = getTestMeta(accounts);
+
+    let block = chain.mineBlock([
       depositTx(contractName, 0, wallet_1.address, wallet_1.address),
     ]);
-
     assertEquals(block.receipts.length, 1);
-    assertEquals(block.height, 4);
 
-    result = block.receipts[0].result;
+    let result = block.receipts[0].result;
 
     assertEquals(result, types.err(types.uint(ErrorCodes.INVALID_AMOUNT)));
   },

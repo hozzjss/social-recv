@@ -5,17 +5,18 @@ import {
   types,
 } from "https://deno.land/x/clarinet@v0.14.0/index.ts";
 import { assertEquals } from "https://deno.land/std@0.90.0/testing/asserts.ts";
-import { depositTx, getSTXBalance, withdrawTx, ErrorCodes } from "./util.ts";
+import {
+  depositTx,
+  getSTXBalance,
+  withdrawTx,
+  ErrorCodes,
+  getTestMeta,
+} from "./util.ts";
 
 Clarinet.test({
   name: "as a member i should be able to make a withdrawal from my own account",
   async fn(chain: Chain, accounts: Map<string, Account>) {
-    const deployer = accounts.get("deployer")!;
-    const wallet_1 = accounts.get("wallet_1")!;
-
-    const nonMemberWallet = accounts.get("wallet_6")!;
-
-    const contractName = deployer.address + ".social-recovery";
+    const { wallet_1, nonMemberWallet, contractName } = getTestMeta(accounts);
 
     const wallet1InitialSTXBalance = getSTXBalance(
       chain,

@@ -12,18 +12,14 @@ import {
   getSTXBalance,
   internalTransferTx,
   ErrorCodes,
+  getTestMeta,
 } from "./util.ts";
 
 Clarinet.test({
   name: "as a member i should be able to make an internal transfer to other members",
   async fn(chain: Chain, accounts: Map<string, Account>) {
-    const deployer = accounts.get("deployer")!;
-    const wallet_1 = accounts.get("wallet_1")!;
-    const wallet_2 = accounts.get("wallet_2")!;
-
-    const nonMemberWallet = accounts.get("wallet_6")!;
-
-    const contractName = deployer.address + ".social-recovery";
+    const { wallet_1, wallet_2, nonMemberWallet, contractName } =
+      getTestMeta(accounts);
 
     const wallet2InitialSTXBalance = getSTXBalance(
       chain,
