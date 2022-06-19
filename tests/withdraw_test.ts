@@ -59,25 +59,6 @@ Clarinet.test({
     );
 
     assertEquals(wallet1FinalSTXBalance2, wallet1InitialSTXBalance);
-
-    block = chain.mineBlock([withdrawTx(contractName, 1000, wallet_1.address)]);
-
-    result = block.receipts[0].result;
-
-    assertEquals(result, types.err(types.uint(ErrorCodes.INSUFFICIENT_FUNDS)));
-
-    block = chain.mineBlock([
-      withdrawTx(contractName, 500, nonMemberWallet.address),
-    ]);
-
-    result = block.receipts[0].result;
-
-    assertEquals(result, types.err(types.uint(ErrorCodes.NOT_MEMBER)));
-
-    block = chain.mineBlock([withdrawTx(contractName, 0, wallet_1.address)]);
-    result = block.receipts[0].result;
-
-    assertEquals(result, types.err(types.uint(ErrorCodes.INVALID_AMOUNT)));
   },
 });
 
@@ -108,5 +89,26 @@ Clarinet.test({
     let result = block.receipts[0].result;
 
     assertEquals(result, types.err(types.uint(ErrorCodes.INVALID_AMOUNT)));
+  },
+});
+
+Clarinet.test({
+  name: "Ensure that a member can only withdraw if they have sufficient funds",
+  async fn(chain: Chain, accounts: Map<string, Account>) {
+    const { contractName, wallet_1 } = getTestMeta(accounts);
+
+    let block = chain.mineBlock([
+      depositTx(contractName, 1000, wallet_1.address, wallet_1.address),
+    ]);
+
+    let result = block.receipts[0].result;
+
+    assertEquals(result, types.ok(types.bool(true)));
+
+    block = chain.mineBlock([withdrawTx(contractName, 1500, wallet_1.address)]);
+
+    result = block.receipts[0].result;
+
+    assertEquals(result, types.err(types.uint(ErrorCodes.INSUFFICIENT_FUNDS)));
   },
 });
