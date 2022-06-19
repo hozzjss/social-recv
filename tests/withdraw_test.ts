@@ -80,3 +80,33 @@ Clarinet.test({
     assertEquals(result, types.err(types.uint(ErrorCodes.INVALID_AMOUNT)));
   },
 });
+
+Clarinet.test({
+  name: "Ensure that only members can withdraw",
+  async fn(chain: Chain, accounts: Map<string, Account>) {
+    const { nonMemberWallet, contractName } = getTestMeta(accounts);
+
+    let block = chain.mineBlock([
+      withdrawTx(contractName, 500, nonMemberWallet.address),
+    ]);
+
+    let result = block.receipts[0].result;
+
+    assertEquals(result, types.err(types.uint(ErrorCodes.NOT_MEMBER)));
+  },
+});
+
+Clarinet.test({
+  name: "Ensure that only a positive non-zero amount can be withdrawn",
+  async fn(chain: Chain, accounts: Map<string, Account>) {
+    const { contractName, wallet_1 } = getTestMeta(accounts);
+
+    let block = chain.mineBlock([
+      withdrawTx(contractName, 0, wallet_1.address),
+    ]);
+
+    let result = block.receipts[0].result;
+
+    assertEquals(result, types.err(types.uint(ErrorCodes.INVALID_AMOUNT)));
+  },
+});

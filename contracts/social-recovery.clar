@@ -100,7 +100,6 @@
         (asserts! (is-eq tx-sender from contract-caller) (err NOT-AUTHORIZED))
         (asserts! (and (is-member from) (is-member to)) (err NOT-MEMBER))
         (asserts! (>= from-balance amount) (err INSUFFICIENT-FUNDS))
-        (asserts! (>= from-balance amount) (err INSUFFICIENT-FUNDS))
         (map-set member-balances from (- from-balance amount))
         (map-set member-balances to (+ (get-balance to) amount))
         (match memo to-print (print to-print) 0x)
