@@ -66,14 +66,12 @@
 (define-public (deposit (amount uint) (to principal))
     (let 
         (
-            (balance 
-                (begin
-                    (asserts! (is-member to) (err NOT-MEMBER))
-                    (get-balance to)))
+            (balance (get-balance to))
             (new-balance (begin 
-                (asserts! (> (stx-get-balance tx-sender) amount) (err INSUFFICIENT-FUNDS))
                 (+ balance amount)))
         )
+        (asserts! (> (stx-get-balance tx-sender) amount) (err INSUFFICIENT-FUNDS))
+        (asserts! (is-member to) (err NOT-MEMBER))
         (asserts! (> amount u0) (err INVALID-AMOUNT))
         (map-set member-balances to new-balance)
         (stx-transfer? amount tx-sender CONTRACT)
@@ -86,13 +84,10 @@
         (asserts! (is-eq tx-sender from contract-caller) (err NOT-AUTHORIZED))
         (let (
             (balance (get-balance from))
-            (new-balance 
-                (begin
-                    (asserts! (>= balance amount) (err INSUFFICIENT-FUNDS))
-                (- balance amount)))
         )
+            (asserts! (>= balance amount) (err INSUFFICIENT-FUNDS))
             (asserts! (> amount u0) (err INVALID-AMOUNT))
-            (map-set member-balances from new-balance)
+            (map-set member-balances from (- balance amount))
             (match memo to-print (print to-print) 0x)
             (as-contract (stx-transfer? amount tx-sender to))
         )
@@ -110,20 +105,14 @@
         (asserts! (is-eq tx-sender from contract-caller) (err NOT-AUTHORIZED))
         (asserts! (is-member from) (err NOT-MEMBER))
         (asserts! (is-member to) (err NOT-MEMBER))
+        (asserts! (>= (get-balance from) amount) (err INSUFFICIENT-FUNDS))
         (let (
             (from-balance (get-balance from))
-            (from-new-balance 
-                (begin
-                    (asserts! (>= from-balance amount) (err INSUFFICIENT-FUNDS))
-                (- from-balance amount)))
-
             (to-balance (get-balance to))
-            (to-new-balance 
-                (+ to-balance amount))
         )
             (asserts! (>= from-balance amount) (err INSUFFICIENT-FUNDS))
-            (map-set member-balances from from-new-balance)
-            (map-set member-balances to to-new-balance)
+            (map-set member-balances from (- from-balance amount))
+            (map-set member-balances to (+ to-balance amount))
             (match memo to-print (print to-print) 0x)
             (ok true)
         )
