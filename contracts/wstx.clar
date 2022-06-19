@@ -26,6 +26,8 @@
 
 (define-public (transfer (amount uint) (sender principal) (recipient principal) (memo (optional (buff 34))))
     (begin
+        ;; should not really matter
+        ;; #[filter(amount, sender, recipient)]
         (try! (stx-transfer? amount sender recipient))
         (match memo to-print (print to-print) 0x)
         (ok true)
