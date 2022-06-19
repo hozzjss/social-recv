@@ -32,13 +32,19 @@ Clarinet.test({
       internalTransferTx(contractName, 500, wallet_1.address, wallet_2.address),
     ]);
 
+    block.receipts[0].events.expectSTXTransferEvent(
+      1000,
+      wallet_1.address,
+      contractName
+    );
+
     let result = block.receipts[0].result;
 
-    assertEquals(result, types.ok(types.bool(true)));
+    result.expectOk().expectBool(true);
 
     result = block.receipts[1].result;
 
-    assertEquals(result, types.ok(types.bool(true)));
+    result.expectOk().expectBool(true);
 
     const wallet1InternalBalance = getMemberBalance(
       chain,
@@ -46,7 +52,7 @@ Clarinet.test({
       wallet_1.address
     );
 
-    assertEquals(wallet1InternalBalance, types.uint(500));
+    wallet1InternalBalance.expectUint(500);
 
     const wallet2InternalBalance = getMemberBalance(
       chain,
@@ -63,7 +69,7 @@ Clarinet.test({
     // STX balance should be unchanged
     assertEquals(wallet2FinalSTXBalance, wallet2InitialSTXBalance);
 
-    assertEquals(wallet2InternalBalance, types.uint(500));
+    wallet2InternalBalance.expectUint(500);
   },
 });
 
@@ -85,7 +91,7 @@ Clarinet.test({
 
     let result = block.receipts[0].result;
 
-    assertEquals(result, types.err(types.uint(ErrorCodes.INSUFFICIENT_FUNDS)));
+    result.expectErr().expectUint(ErrorCodes.INSUFFICIENT_FUNDS);
   },
 });
 
@@ -107,7 +113,7 @@ Clarinet.test({
 
     let result = block.receipts[0].result;
 
-    assertEquals(result, types.err(types.uint(ErrorCodes.NOT_MEMBER)));
+    result.expectErr().expectUint(ErrorCodes.NOT_MEMBER);
   },
 });
 

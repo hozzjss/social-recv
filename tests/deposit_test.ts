@@ -2,7 +2,6 @@ import {
   Clarinet,
   Chain,
   Account,
-  types,
 } from "https://deno.land/x/clarinet@v0.14.0/index.ts";
 import { assertEquals } from "https://deno.land/std@0.90.0/testing/asserts.ts";
 import {
@@ -21,12 +20,11 @@ Clarinet.test({
     ]);
 
     let result = block.receipts[0].result;
-
-    assertEquals(result, types.ok(types.bool(true)));
+    result.expectOk().expectBool(true);
     assertEquals(block.receipts.length, 1);
     const balance = getMemberBalance(chain, contractName, wallet_1.address);
 
-    assertEquals(balance, types.uint(1000));
+    balance.expectUint(1000);
   },
 });
 
@@ -42,7 +40,7 @@ Clarinet.test({
 
     let result = block.receipts[0].result;
 
-    assertEquals(result, types.err(types.uint(ErrorCodes.NOT_MEMBER)));
+    result.expectErr().expectUint(ErrorCodes.NOT_MEMBER);
   },
 });
 
@@ -57,7 +55,6 @@ Clarinet.test({
     assertEquals(block.receipts.length, 1);
 
     let result = block.receipts[0].result;
-
-    assertEquals(result, types.err(types.uint(ErrorCodes.INVALID_AMOUNT)));
+    result.expectErr().expectUint(ErrorCodes.INVALID_AMOUNT);
   },
 });

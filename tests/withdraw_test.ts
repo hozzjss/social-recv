@@ -28,37 +28,27 @@ Clarinet.test({
       depositTx(contractName, 1000, wallet_1.address, wallet_1.address),
     ]);
 
-    assertEquals(block.receipts.length, 1);
-    assertEquals(block.height, 2);
+    block.receipts[0].events.expectSTXTransferEvent(
+      1000,
+      wallet_1.address,
+      contractName
+    );
 
     let result = block.receipts[0].result;
 
-    assertEquals(result, types.ok(types.bool(true)));
-
-    const wallet1FinalSTXBalance = getSTXBalance(
-      chain,
-      accounts,
-      wallet_1.address
-    );
-
-    assertEquals(wallet1FinalSTXBalance, wallet1InitialSTXBalance - 1000);
+    result.expectOk().expectBool(true);
 
     block = chain.mineBlock([withdrawTx(contractName, 1000, wallet_1.address)]);
 
-    assertEquals(block.receipts.length, 1);
-    assertEquals(block.height, 3);
-
-    result = block.receipts[0].result;
-
-    assertEquals(result, types.ok(types.bool(true)));
-
-    const wallet1FinalSTXBalance2 = getSTXBalance(
-      chain,
-      accounts,
+    block.receipts[0].events.expectSTXTransferEvent(
+      1000,
+      contractName,
       wallet_1.address
     );
 
-    assertEquals(wallet1FinalSTXBalance2, wallet1InitialSTXBalance);
+    result = block.receipts[0].result;
+
+    result.expectOk().expectBool(true);
   },
 });
 
@@ -73,7 +63,7 @@ Clarinet.test({
 
     let result = block.receipts[0].result;
 
-    assertEquals(result, types.err(types.uint(ErrorCodes.NOT_MEMBER)));
+    result.expectErr().expectUint(ErrorCodes.NOT_MEMBER);
   },
 });
 
@@ -103,12 +93,12 @@ Clarinet.test({
 
     let result = block.receipts[0].result;
 
-    assertEquals(result, types.ok(types.bool(true)));
+    result.expectOk().expectBool(true);
 
     block = chain.mineBlock([withdrawTx(contractName, 1500, wallet_1.address)]);
 
     result = block.receipts[0].result;
 
-    assertEquals(result, types.err(types.uint(ErrorCodes.INSUFFICIENT_FUNDS)));
+    result.expectErr().expectUint(ErrorCodes.INSUFFICIENT_FUNDS);
   },
 });

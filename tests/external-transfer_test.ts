@@ -2,7 +2,6 @@ import {
   Clarinet,
   Chain,
   Account,
-  types,
 } from "https://deno.land/x/clarinet@v0.14.0/index.ts";
 import { assertEquals } from "https://deno.land/std@0.90.0/testing/asserts.ts";
 import {
@@ -19,26 +18,33 @@ Clarinet.test({
   async fn(chain: Chain, accounts: Map<string, Account>) {
     const { wallet_1, wallet_2, nonMemberWallet, contractName } =
       getTestMeta(accounts);
-    const wallet2InitialSTXBalance = getSTXBalance(
-      chain,
-      accounts,
-      wallet_2.address
-    );
-
     let block = chain.mineBlock([
       depositTx(contractName, 1000, wallet_1.address, wallet_1.address),
       externalTransferTx(contractName, 500, wallet_1.address, wallet_2.address),
     ]);
 
+    const [depositResult, externalTransferResult] = block.receipts;
+
+    depositResult.events.expectSTXTransferEvent(
+      1000,
+      wallet_1.address,
+      contractName
+    );
+
+    externalTransferResult.events.expectSTXTransferEvent(
+      500,
+      contractName,
+      wallet_2.address
+    );
+
     assertEquals(block.receipts.length, 2);
 
     let result = block.receipts[0].result;
-
-    assertEquals(result, types.ok(types.bool(true)));
+    result.expectOk().expectBool(true);
 
     result = block.receipts[1].result;
 
-    assertEquals(result, types.ok(types.bool(true)));
+    result.expectOk().expectBool(true);
 
     const wallet1InternalBalance = getMemberBalance(
       chain,
@@ -46,16 +52,7 @@ Clarinet.test({
       wallet_1.address
     );
 
-    assertEquals(wallet1InternalBalance, types.uint(500));
-
-    const wallet2FinalSTXBalance = getSTXBalance(
-      chain,
-      accounts,
-      wallet_2.address
-    );
-
-    // STX balance should be unchanged
-    assertEquals(wallet2FinalSTXBalance, wallet2InitialSTXBalance + 500);
+    wallet1InternalBalance.expectUint(500);
   },
 });
 
@@ -77,7 +74,7 @@ Clarinet.test({
 
     let result = block.receipts[0].result;
 
-    assertEquals(result, types.err(types.uint(ErrorCodes.INSUFFICIENT_FUNDS)));
+    result.expectErr().expectUint(ErrorCodes.INSUFFICIENT_FUNDS);
   },
 });
 
@@ -99,7 +96,7 @@ Clarinet.test({
 
     assertEquals(block.receipts.length, 1);
 
-    assertEquals(result, types.err(types.uint(ErrorCodes.NOT_MEMBER)));
+    result.expectErr().expectUint(ErrorCodes.NOT_MEMBER);
   },
 });
 
@@ -115,6 +112,6 @@ Clarinet.test({
 
     let result = block.receipts[0].result;
 
-    assertEquals(result, types.err(types.uint(ErrorCodes.INVALID_AMOUNT)));
+    result.expectErr().expectUint(ErrorCodes.INVALID_AMOUNT);
   },
 });
