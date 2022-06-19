@@ -43,6 +43,8 @@
 
 (define-constant INSUFFICIENT-FUNDS u2001)
 
+(define-constant INVALID-AMOUNT u2002)
+
 
 
 ;; data maps and vars
@@ -72,6 +74,7 @@
                 (asserts! (> (stx-get-balance tx-sender) amount) (err INSUFFICIENT-FUNDS))
                 (+ balance amount)))
         )
+        (asserts! (> amount u0) (err INVALID-AMOUNT))
         (map-set member-balances to new-balance)
         (stx-transfer? amount tx-sender CONTRACT)
     )
@@ -84,9 +87,11 @@
         (let (
             (balance (get-balance from))
             (new-balance 
-                (- balance amount))
+                (begin
+                    (asserts! (>= balance amount) (err INSUFFICIENT-FUNDS))
+                (- balance amount)))
         )
-            (asserts! (>= balance amount) (err INSUFFICIENT-FUNDS))
+            (asserts! (> amount u0) (err INVALID-AMOUNT))
             (map-set member-balances from new-balance)
             (match memo to-print (print to-print) 0x)
             (as-contract (stx-transfer? amount tx-sender to))
@@ -101,13 +106,16 @@
 
 (define-public (internal-transfer (amount uint) (from principal) (to principal) (memo (optional (buff 34))))
     (begin 
+        (asserts! (> amount u0) (err INVALID-AMOUNT))
         (asserts! (is-eq tx-sender from contract-caller) (err NOT-AUTHORIZED))
         (asserts! (is-member from) (err NOT-MEMBER))
         (asserts! (is-member to) (err NOT-MEMBER))
         (let (
             (from-balance (get-balance from))
             (from-new-balance 
-                (- from-balance amount))
+                (begin
+                    (asserts! (>= from-balance amount) (err INSUFFICIENT-FUNDS))
+                (- from-balance amount)))
 
             (to-balance (get-balance to))
             (to-new-balance 

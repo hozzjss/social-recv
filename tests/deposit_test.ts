@@ -31,8 +31,19 @@ Clarinet.test({
     assertEquals(block.receipts.length, 1);
     assertEquals(block.height, 3);
 
-    const result = block.receipts[0].result;
+    let result = block.receipts[0].result;
 
     assertEquals(result, types.err(types.uint(ErrorCodes.NOT_MEMBER)));
+
+    block = chain.mineBlock([
+      depositTx(contractName, 0, wallet_1.address, wallet_1.address),
+    ]);
+
+    assertEquals(block.receipts.length, 1);
+    assertEquals(block.height, 4);
+
+    result = block.receipts[0].result;
+
+    assertEquals(result, types.err(types.uint(ErrorCodes.INVALID_AMOUNT)));
   },
 });

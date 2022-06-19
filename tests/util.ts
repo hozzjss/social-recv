@@ -9,6 +9,7 @@ export const ErrorCodes = {
   NOT_MEMBER: 1001,
   NOT_AUTHORIZED: 1002,
   INSUFFICIENT_FUNDS: 2001,
+  INVALID_AMOUNT: 2002,
 };
 
 export const getMemberBalance = (
