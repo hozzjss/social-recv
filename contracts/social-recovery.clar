@@ -40,34 +40,60 @@
 
 (define-constant NOT-MEMBER u1001)
 (define-constant NOT-AUTHORIZED u1002)
+(define-constant ACCOUNT-LOCKED u1003)
+(define-constant LOCKING-UNAVAILABLE u1004)
+(define-constant ALREADY-LOCKED u1005)
 
 (define-constant INSUFFICIENT-FUNDS u2001)
 
 (define-constant INVALID-AMOUNT u2002)
 
 
+(define-constant ACCOUNT-UNLOCK-BT u200)
+(define-constant ACCOUNT-LOCKING-COOLDOWN-BT u2000)
+
+(define-constant MEMBER-INITIAL-DATA {
+        balance: u0,
+        locked-until: u0,
+        locking-cool-down-until: u0,
+    })
+
 
 ;; data maps and vars
 ;;
-(define-map member-balances 
+(define-map memebers-registry 
     principal 
-    uint)
+    {
+        balance: uint,
+        locked-until: uint,
+        locking-cool-down-until: uint,
+        new-address: principal})
 
 
 ;; private functions
 ;;
 (define-private (add-member (member principal)) 
-    (map-insert member-balances member u0))
+    (map-insert memebers-registry member (merge MEMBER-INITIAL-DATA {new-address: member})))
 
 (define-private (set-balance (member principal) (amount uint))
-    (map-set member-balances member amount))
+    (let ((member-data (unwrap-panic (map-get? memebers-registry member))))
+    
+     (map-set memebers-registry member (merge member-data {balance: amount}))))
+
+(define-private (update-member (member principal) (data {
+        balance: uint,
+        locked-until: uint,
+        locking-cool-down-until: uint,
+        new-address: principal}))
+    (map-set memebers-registry member data))
 
 (define-private (transfer-checks (amount uint) (from principal) (to principal))
     (let (
           (balance (get-balance from))) 
         (asserts! (> amount u0) (err INVALID-AMOUNT))
         (asserts! (is-eq tx-sender from contract-caller) (err NOT-AUTHORIZED))
-        (asserts! (is-member tx-sender) (err NOT-MEMBER))
+        (asserts! (is-member from) (err NOT-MEMBER))
+        (asserts! (unwrap-panic (is-account-locked? from)) (err ACCOUNT-LOCKED))
         (asserts! (>= balance amount) (err INSUFFICIENT-FUNDS))
         (ok balance)))
     
@@ -115,11 +141,50 @@
         error (err error)))
 
 
+(define-public (mark-as-lost (member principal) (new-address principal)) 
+    (begin 
+        (asserts! (is-eq tx-sender contract-caller) 
+            (err NOT-AUTHORIZED))
+        (asserts! 
+            (and 
+                (is-member tx-sender) 
+                (is-member member)) 
+            (err NOT-MEMBER))
+            (let ((member-data (unwrap-panic (get-member member)))
+                (locker tx-sender)
+                (locker-data (unwrap-panic (get-member locker)))
+                (locked-until (+ burn-block-height ACCOUNT-UNLOCK-BT))
+                (locking-cool-down (+ burn-block-height ACCOUNT-LOCKING-COOLDOWN-BT))
+                (is-locking-available (> burn-block-height (get locking-cool-down-until locker-data)))
+                (is-unlocked (unwrap-panic (is-account-locked? member))))
+                    (asserts! is-unlocked (err ACCOUNT-LOCKED))
+                    (asserts! is-locking-available (err LOCKING-UNAVAILABLE))
+                    (asserts! (> burn-block-height (get locked-until member-data)) (err ALREADY-LOCKED))
+                    (update-member member (merge member-data {locked-until: locked-until, new-address: new-address}))
+                    (update-member locker (merge locker-data { locking-cool-down-until: locking-cool-down }))
+                (ok true))))
+
+
 (define-read-only (get-balance (member principal)) 
-    (default-to u0 (map-get? member-balances member)))
+    (default-to u0 (get balance (map-get? memebers-registry member))))
+
+(define-read-only (get-member (member principal)) 
+    (map-get? memebers-registry member))
+
+
+(define-read-only (is-account-locked? (member principal)) 
+    (begin
+        (asserts! (is-member member) (err NOT-MEMBER))
+        (ok (> burn-block-height (default-to u0 (get-unlock-time member))))))
+
+(define-read-only (get-unlock-time (member principal)) 
+    (get locked-until (map-get? memebers-registry member)))
+
+(define-read-only (get-locking-cool-down (member principal)) 
+    (get locking-cool-down-until (map-get? memebers-registry member)))
 
 (define-read-only (is-member (account principal)) 
-    (is-some (map-get? member-balances account)))
+    (is-some (map-get? memebers-registry account)))
 
 ;; init
 

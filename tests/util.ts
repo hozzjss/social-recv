@@ -10,7 +10,13 @@ export const ErrorCodes = {
   NOT_AUTHORIZED: 1002,
   INSUFFICIENT_FUNDS: 2001,
   INVALID_AMOUNT: 2002,
+  ACCOUNT_LOCKED: 1003,
 };
+
+// BT = Block time
+export const ACCOUNT_LOCK_BT = 200;
+
+export const ACCOUNT_LOCKING_COOL_DOWN_BT = 2000;
 
 export const getMemberBalance = (
   chain: Chain,
@@ -122,7 +128,8 @@ export const getTestMeta = (accounts: Map<string, Account>) => {
   const wallet_3 = accounts.get("wallet_3")!;
   const wallet_4 = accounts.get("wallet_4")!;
   const wallet_5 = accounts.get("wallet_5")!;
-  const nonMemberWallet = accounts.get("wallet_6")!;
+  const newOwnerWallet = accounts.get("wallet_6")!;
+  const nonMemberWallet = accounts.get("wallet_9")!;
   const contractName = deployer.address + ".social-recovery";
 
   return {
@@ -132,6 +139,7 @@ export const getTestMeta = (accounts: Map<string, Account>) => {
     wallet_3,
     wallet_4,
     wallet_5,
+    newOwnerWallet,
     nonMemberWallet,
     contractName,
   };
