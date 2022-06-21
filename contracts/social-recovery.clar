@@ -29,8 +29,8 @@
         'ST2CY5V39NHDPWSXMW9QDT3HC3GD6Q6XX4CFRK9AG
         'ST2JHG361ZXG51QTKY2NQCVBPPRRE2KZB1HR05NNC
         'ST2NEB84ASENDXKYGJPQW86YXQCEFEX2ZQPG87ND
-        'ST2REHHS5J3CERCRBEPMGH7921Q6PYKAADT7JP2VB
-    ))
+        'ST2REHHS5J3CERCRBEPMGH7921Q6PYKAADT7JP2VB))
+    
 
 
 (define-constant CONTRACT (as-contract tx-sender))
@@ -59,6 +59,19 @@
 (define-private (add-member (member principal)) 
     (map-insert member-balances member u0))
 
+(define-private (set-balance (member principal) (amount uint))
+    (map-set member-balances member amount))
+
+(define-private (transfer-checks (amount uint) (from principal) (to principal))
+    (let (
+          (balance (get-balance from))) 
+        (asserts! (> amount u0) (err INVALID-AMOUNT))
+        (asserts! (is-eq tx-sender from contract-caller) (err NOT-AUTHORIZED))
+        (asserts! (is-member tx-sender) (err NOT-MEMBER))
+        (asserts! (>= balance amount) (err INSUFFICIENT-FUNDS))
+        (ok balance)))
+    
+
 
 ;; public functions
 ;;
@@ -68,44 +81,38 @@
         (asserts! (> (stx-get-balance tx-sender) amount) (err INSUFFICIENT-FUNDS))
         (asserts! (is-member to) (err NOT-MEMBER))
         (asserts! (> amount u0) (err INVALID-AMOUNT))
-        (map-set member-balances to (+ (get-balance to) amount))
-        (stx-transfer? amount tx-sender CONTRACT)
-    )
-)
+        (set-balance to (+ (get-balance to) amount))
+        (stx-transfer? amount tx-sender CONTRACT)))
+    
+
 
 (define-public (external-transfer (amount uint) (from principal) (to principal) (memo (optional (buff 34))))
-    (let (
-        (balance (get-balance from))
-    )
-        (asserts! (is-member tx-sender) (err NOT-MEMBER))
-        (asserts! (is-eq tx-sender from contract-caller) (err NOT-AUTHORIZED))
-        (asserts! (>= balance amount) (err INSUFFICIENT-FUNDS))
-        (asserts! (> amount u0) (err INVALID-AMOUNT))
-        (map-set member-balances from (- balance amount))
-        (match memo to-print (print to-print) 0x)
-        (as-contract (stx-transfer? amount tx-sender to))
-    )
-)
+    ;; #[filter(amount, from, to)]
+    (match (transfer-checks amount from to) 
+        from-balance
+        (begin 
+            (set-balance from (- from-balance amount))
+            (match memo to-print (print to-print) 0x)
+            (as-contract (stx-transfer? amount tx-sender to)))
+        error (err error)))
 
 
-(define-public (withdraw (amount uint) (member principal)) 
-    (external-transfer amount member member none)
-)
+
+(define-public (withdraw (amount uint) (member principal))
+    (external-transfer amount member member none))
+
 
 (define-public (internal-transfer (amount uint) (from principal) (to principal) (memo (optional (buff 34))))
-    (let (
-        (from-balance (get-balance from))
-    )
-        (asserts! (> amount u0) (err INVALID-AMOUNT))
-        (asserts! (is-eq tx-sender from contract-caller) (err NOT-AUTHORIZED))
+    ;; #[filter(amount, from, to)]
+    (match (transfer-checks amount from to) 
+        from-balance
+        (begin    
         (asserts! (and (is-member from) (is-member to)) (err NOT-MEMBER))
-        (asserts! (>= from-balance amount) (err INSUFFICIENT-FUNDS))
-        (map-set member-balances from (- from-balance amount))
-        (map-set member-balances to (+ (get-balance to) amount))
+        (set-balance from (- from-balance amount))
+        (set-balance to (+ (get-balance to) amount))
         (match memo to-print (print to-print) 0x)
-        (ok true)
-    )
-)
+        (ok true))
+        error (err error)))
 
 
 (define-read-only (get-balance (member principal)) 
