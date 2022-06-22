@@ -8,9 +8,14 @@ import {
 export const ErrorCodes = {
   NOT_MEMBER: 1001,
   NOT_AUTHORIZED: 1002,
+  ACCOUNT_LOCKED: 1003,
+  LOCKING_UNAVAILABLE: 1004,
+  ALREADY_LOCKED: 1005,
+  ALREADY_A_MEMBER: 1006,
   INSUFFICIENT_FUNDS: 2001,
   INVALID_AMOUNT: 2002,
-  ACCOUNT_LOCKED: 1003,
+  DISSENT_EXPIRED: 3001,
+  DISSENT_ACTIVE: 3002,
 };
 
 // BT = Block time
@@ -143,4 +148,65 @@ export const getTestMeta = (accounts: Map<string, Account>) => {
     nonMemberWallet,
     contractName,
   };
+};
+
+export const markAsLost = (
+  contractName: string,
+  lostAccount: string,
+  newOwner: string,
+  sender: string
+) => {
+  return Tx.contractCall(
+    contractName,
+    "mark-as-lost",
+    [`'${lostAccount}`, `'${newOwner}`],
+    sender
+  );
+};
+
+export const getAccountUnlockTime = (
+  chain: Chain,
+  contractName: string,
+  lostAccount: string
+) => {
+  return chain.callReadOnlyFn(
+    contractName,
+    "get-unlock-time",
+    [`'${lostAccount}`],
+    lostAccount
+  );
+};
+
+export const isAccountUnlocked = (
+  chain: Chain,
+  contractName: string,
+  lostAccount: string
+) => {
+  return chain.callReadOnlyFn(
+    contractName,
+    "is-account-unlocked?",
+    [`'${lostAccount}`],
+    lostAccount
+  );
+};
+
+export const getLockingCoolDown = (
+  chain: Chain,
+  contractName: string,
+  member: string
+) => {
+  return chain.callReadOnlyFn(
+    contractName,
+    "get-locking-cool-down",
+    [`'${member}`],
+    member
+  );
+};
+
+export const dissent = (
+  contractName: string,
+  member: string,
+  sender: string
+) => {
+  return Tx.contractCall(contractName, "dissent", [`'${member}`], sender);
 };

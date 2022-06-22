@@ -43,6 +43,7 @@
 (define-constant ACCOUNT-LOCKED u1003)
 (define-constant LOCKING-UNAVAILABLE u1004)
 (define-constant ALREADY-LOCKED u1005)
+(define-constant ALREADY-A-MEMBER u1006)
 
 (define-constant INSUFFICIENT-FUNDS u2001)
 
@@ -153,6 +154,9 @@
                 (is-member tx-sender) 
                 (is-member member)) 
             (err NOT-MEMBER))
+        (asserts!
+            (not (is-member new-address))
+            (err ALREADY-A-MEMBER))
             (let ((member-data (unwrap-panic (get-member member)))
                 (locker tx-sender)
                 (locker-data (unwrap-panic (get-member locker)))
