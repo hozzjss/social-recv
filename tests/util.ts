@@ -210,3 +210,29 @@ export const dissent = (
 ) => {
   return Tx.contractCall(contractName, "dissent", [`'${member}`], sender);
 };
+
+export const executeRecovery = (
+  contractName: string,
+  member: string,
+  sender: string
+) => {
+  return Tx.contractCall(
+    contractName,
+    "execute-recovery",
+    [`'${member}`],
+    sender
+  );
+};
+
+export const getMemberData = (
+  chain: Chain,
+  contractName: string,
+  member: string
+) => {
+  return chain.callReadOnlyFn(
+    contractName,
+    "get-member",
+    [`'${member}`],
+    member
+  );
+};

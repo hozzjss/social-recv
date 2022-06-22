@@ -1,16 +1,12 @@
 import {
   Clarinet,
-  Tx,
   Chain,
   Account,
-  types,
 } from "https://deno.land/x/clarinet@v0.14.0/index.ts";
 import { assertEquals } from "https://deno.land/std@0.90.0/testing/asserts.ts";
 import {
-  getMemberBalance,
   depositTx,
   externalTransferTx,
-  getSTXBalance,
   internalTransferTx,
   withdrawTx,
   getTestMeta,
@@ -22,6 +18,9 @@ import {
   getLockingCoolDown,
   isAccountUnlocked,
   markAsLost,
+  executeRecovery,
+  getMemberBalance,
+  getMemberData,
 } from "./util.ts";
 // import * as mod from "https://deno.land/std@0.76.0/node/buffer.ts";
 
@@ -414,5 +413,127 @@ Clarinet.test({
     result = block.receipts[0].result;
 
     result.expectErr().expectUint(ErrorCodes.NOT_MEMBER);
+  },
+});
+
+Clarinet.test({
+  name: `As a member I should be able to execute the recovery request after ${ACCOUNT_LOCK_BT} blocks`,
+  async fn(chain: Chain, accounts: Map<string, Account>) {
+    const {
+      contractName,
+      wallet_1,
+      wallet_2: lockedAccount,
+      wallet_3,
+      nonMemberWallet,
+      newOwnerWallet,
+    } = getTestMeta(accounts);
+
+    const LOCKED_BALANCE = 400;
+
+    let block = chain.mineBlock([
+      depositTx(
+        contractName,
+        LOCKED_BALANCE,
+        lockedAccount.address,
+        lockedAccount.address
+      ),
+    ]);
+
+    let result = block.receipts[0].result;
+
+    result.expectOk().expectBool(true);
+
+    block = chain.mineBlock([
+      markAsLost(
+        contractName,
+        lockedAccount.address,
+        newOwnerWallet.address,
+        wallet_1.address
+      ),
+    ]);
+
+    result = block.receipts[0].result;
+    result.expectOk().expectBool(true);
+
+    chain.mineEmptyBlockUntil(chain.blockHeight + ACCOUNT_LOCK_BT);
+
+    block = chain.mineBlock([
+      executeRecovery(contractName, lockedAccount.address, wallet_1.address),
+    ]);
+
+    result = block.receipts[0].result;
+
+    result.expectOk().expectBool(true);
+
+    result = isAccountUnlocked(
+      chain,
+      contractName,
+      newOwnerWallet.address
+    ).result;
+
+    result.expectOk().expectBool(true);
+
+    result = getMemberBalance(chain, contractName, newOwnerWallet.address);
+
+    result.expectUint(LOCKED_BALANCE);
+
+    result = getMemberBalance(chain, contractName, lockedAccount.address);
+
+    result.expectUint(0);
+
+    result = isAccountUnlocked(
+      chain,
+      contractName,
+      lockedAccount.address
+    ).result;
+
+    result.expectErr().expectUint(ErrorCodes.NOT_MEMBER);
+
+    block = chain.mineBlock([
+      withdrawTx(contractName, 20, newOwnerWallet.address),
+      externalTransferTx(
+        contractName,
+        20,
+        newOwnerWallet.address,
+        nonMemberWallet.address
+      ),
+
+      internalTransferTx(
+        contractName,
+        20,
+        newOwnerWallet.address,
+        wallet_3.address
+      ),
+    ]);
+
+    const [
+      withdrawTxResult,
+      externalTransferTxResult,
+      internalTransferTxResult,
+    ] = block.receipts;
+
+    withdrawTxResult.result.expectOk().expectBool(true);
+    externalTransferTxResult.result.expectOk().expectBool(true);
+    internalTransferTxResult.result.expectOk().expectBool(true);
+
+    withdrawTxResult.events.expectSTXTransferEvent(
+      20,
+      contractName,
+      newOwnerWallet.address
+    );
+
+    externalTransferTxResult.events.expectSTXTransferEvent(
+      20,
+      contractName,
+      nonMemberWallet.address
+    );
+
+    result = getMemberBalance(chain, contractName, wallet_3.address);
+
+    result.expectUint(20);
+
+    result = getMemberBalance(chain, contractName, newOwnerWallet.address);
+
+    result.expectUint(LOCKED_BALANCE - 20 * 3);
   },
 });

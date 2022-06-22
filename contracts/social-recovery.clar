@@ -91,6 +91,9 @@
         new-address: principal}))
     (map-set memebers-registry member data))
 
+(define-private (delete-member (member principal)) 
+    (map-delete memebers-registry member))
+
 (define-private (transfer-checks (amount uint) (from principal) (to principal))
     (let (
           (balance (get-balance from))) 
@@ -188,6 +191,29 @@
             (locker tx-sender)) 
             (asserts! (<= burn-block-height (get locked-until member-data)) (err DISSENT-EXPIRED))
             (update-member member (merge member-data {locked-until: u0, new-address: member}))
+            (ok true))))
+
+
+(define-public (execute-recovery (member principal))
+    (begin 
+        (asserts! (and 
+            (is-eq tx-sender contract-caller)
+            (not (is-eq member tx-sender))) 
+            (err NOT-AUTHORIZED))
+        (asserts! 
+            (and 
+                (is-member tx-sender) 
+                (is-member member)) 
+            (err NOT-MEMBER))
+        (asserts! (is-ok (is-account-unlocked? tx-sender)) (err ACCOUNT-LOCKED))
+
+        (let ((member-data (unwrap-panic (get-member member)))
+            (new-address (get new-address member-data)) )
+            (asserts! (> burn-block-height (get locked-until member-data)) (err DISSENT-ACTIVE))
+            (add-member new-address)
+
+            (update-member new-address (merge member-data {locked-until: u0}))
+            (delete-member member)
             (ok true))))
 
 
