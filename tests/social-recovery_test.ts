@@ -74,6 +74,7 @@ Clarinet.test({
     const {
       wallet_1,
       wallet_2: lockedAccount,
+      wallet_3: dissenter,
       nonMemberWallet,
       contractName,
       newOwnerWallet,
@@ -116,27 +117,77 @@ Clarinet.test({
     // make any transaction from the locked account and expect an account locked error
 
     block = chain.mineBlock([
-      withdrawTx(contractName, 400, lockedAccount.address),
+      withdrawTx(contractName, 200, lockedAccount.address),
       externalTransferTx(
         contractName,
-        400,
+        200,
         lockedAccount.address,
         nonMemberWallet.address
       ),
       internalTransferTx(
         contractName,
-        400,
+        200,
         lockedAccount.address,
         wallet_1.address
       ),
     ]);
 
-    const results = block.receipts;
+    let results = block.receipts;
 
     results.forEach((txResult) => {
       txResult.result.expectErr().expectUint(ErrorCodes.ACCOUNT_LOCKED);
 
       assertEquals(txResult.events.length, 0);
+    });
+
+    block = chain.mineBlock([
+      Tx.contractCall(
+        contractName,
+        "dissent",
+        [`'${lockedAccount.address}`],
+        dissenter.address
+      ),
+    ]);
+
+    result = block.receipts[0].result;
+
+    result.expectOk().expectBool(true);
+
+    block = chain.mineBlock([
+      withdrawTx(contractName, 200, lockedAccount.address),
+      externalTransferTx(
+        contractName,
+        200,
+        lockedAccount.address,
+        nonMemberWallet.address
+      ),
+      internalTransferTx(
+        contractName,
+        200,
+        lockedAccount.address,
+        wallet_1.address
+      ),
+    ]);
+
+    results = block.receipts;
+
+    const [withdrawResult, externalTransferResult, internalTransferResult] =
+      results;
+
+    withdrawResult.events.expectSTXTransferEvent(
+      200,
+      contractName,
+      lockedAccount.address
+    );
+
+    externalTransferResult.events.expectSTXTransferEvent(
+      200,
+      contractName,
+      nonMemberWallet.address
+    );
+
+    results.forEach((txResult) => {
+      txResult.result.expectOk().expectBool(true);
     });
   },
 });

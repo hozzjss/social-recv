@@ -49,6 +49,9 @@
 (define-constant INVALID-AMOUNT u2002)
 
 
+(define-constant DISSENT-ACTIVE u3001)
+(define-constant DISSENT-EXPIRED u3002)
+
 (define-constant ACCOUNT-UNLOCK-BT u200)
 (define-constant ACCOUNT-LOCKING-COOLDOWN-BT u2000)
 
@@ -93,7 +96,7 @@
         (asserts! (> amount u0) (err INVALID-AMOUNT))
         (asserts! (is-eq tx-sender from contract-caller) (err NOT-AUTHORIZED))
         (asserts! (is-member from) (err NOT-MEMBER))
-        (asserts! (unwrap-panic (is-account-locked? from)) (err ACCOUNT-LOCKED))
+        (asserts! (is-ok (is-account-unlocked? from)) (err ACCOUNT-LOCKED))
         (asserts! (>= balance amount) (err INSUFFICIENT-FUNDS))
         (ok balance)))
     
@@ -156,13 +159,30 @@
                 (locked-until (+ burn-block-height ACCOUNT-UNLOCK-BT))
                 (locking-cool-down (+ burn-block-height ACCOUNT-LOCKING-COOLDOWN-BT))
                 (is-locking-available (> burn-block-height (get locking-cool-down-until locker-data)))
-                (is-unlocked (unwrap-panic (is-account-locked? member))))
+                (is-unlocked (is-ok (is-account-unlocked? member))))
                     (asserts! is-unlocked (err ACCOUNT-LOCKED))
                     (asserts! is-locking-available (err LOCKING-UNAVAILABLE))
                     (asserts! (> burn-block-height (get locked-until member-data)) (err ALREADY-LOCKED))
                     (update-member member (merge member-data {locked-until: locked-until, new-address: new-address}))
                     (update-member locker (merge locker-data { locking-cool-down-until: locking-cool-down }))
                 (ok true))))
+
+(define-public (dissent (member principal)) 
+    (begin 
+        (asserts! (is-eq tx-sender contract-caller) 
+            (err NOT-AUTHORIZED))
+        (asserts! 
+            (and 
+                (is-member tx-sender) 
+                (is-member member)) 
+            (err NOT-MEMBER))
+        (asserts! (is-ok (is-account-unlocked? tx-sender)) (err ACCOUNT-LOCKED))
+
+        (let ((member-data (unwrap-panic (get-member member)))
+            (locker tx-sender)) 
+            (asserts! (<= burn-block-height (get locked-until member-data)) (err DISSENT-EXPIRED))
+            (update-member member (merge member-data {locked-until: u0, new-address: member}))
+            (ok true))))
 
 
 (define-read-only (get-balance (member principal)) 
@@ -172,10 +192,19 @@
     (map-get? memebers-registry member))
 
 
-(define-read-only (is-account-locked? (member principal)) 
+(define-read-only (is-account-unlocked? (member principal)) 
     (begin
         (asserts! (is-member member) (err NOT-MEMBER))
-        (ok (> burn-block-height (default-to u0 (get-unlock-time member))))))
+        (let (
+            (member-data (unwrap-panic (get-member member)))
+            (new-address (get new-address member-data))
+        )
+        (asserts! 
+            (and 
+                (> burn-block-height (get locked-until member-data))
+                (is-eq member new-address))
+            (err ACCOUNT-LOCKED))
+        (ok true))))
 
 (define-read-only (get-unlock-time (member principal)) 
     (get locked-until (map-get? memebers-registry member)))
