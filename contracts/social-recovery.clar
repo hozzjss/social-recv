@@ -169,7 +169,9 @@
 
 (define-public (dissent (member principal)) 
     (begin 
-        (asserts! (is-eq tx-sender contract-caller) 
+        (asserts! (and 
+            (is-eq tx-sender contract-caller)
+            (not (is-eq member tx-sender))) 
             (err NOT-AUTHORIZED))
         (asserts! 
             (and 
@@ -183,6 +185,7 @@
             (asserts! (<= burn-block-height (get locked-until member-data)) (err DISSENT-EXPIRED))
             (update-member member (merge member-data {locked-until: u0, new-address: member}))
             (ok true))))
+
 
 
 (define-read-only (get-balance (member principal)) 
